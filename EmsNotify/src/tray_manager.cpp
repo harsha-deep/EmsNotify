@@ -166,7 +166,8 @@ void TrayManager::checkEmployeeId()
 
 void TrayManager::callApi(const QString& employeeId)
 {
-	QUrl url("http://localhost:8000/time");
+	//QUrl url("http://localhost:8000/time");
+	QUrl url("https://smartcsg.karnataka.gov.in/ems/api/getElapsedTime");
 	QNetworkRequest request(url);
 	request.setHeader(QNetworkRequest::ContentTypeHeader,
 		"application/json");
