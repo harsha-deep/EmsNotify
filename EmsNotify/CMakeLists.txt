@@ -11,7 +11,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
 
 qt_standard_project_setup()
 
-qt_add_executable(EmsNotify
+qt_add_executable(EmsNotify WIN32
     src/main.cpp
     src/tray_manager.cpp
     include/tray_manager.h
