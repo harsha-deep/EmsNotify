@@ -16,6 +16,7 @@ qt_add_executable(EmsNotify WIN32
     src/tray_manager.cpp
     include/tray_manager.h
     resources/app.qrc
+    resources/app.rc
 )
 
 target_include_directories(EmsNotify PRIVATE
