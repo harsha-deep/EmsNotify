@@ -15,18 +15,19 @@
 #include <QDebug>
 #include <QTimer>
 #include <QMenu>
+#include <QIcon>
 
 TrayManager::TrayManager(QObject* parent)
-    : QObject(parent),
-      networkManager(new QNetworkAccessManager(this)),
-      timer(new QTimer(this)),
-      remainingSeconds(0)
+	: QObject(parent),
+	networkManager(new QNetworkAccessManager(this)),
+	timer(new QTimer(this)),
+	remainingSeconds(0)
 {
-    setupUI();
-    setupTray();
-    checkEmployeeId();
+	setupUI();
+	setupTray();
+	checkEmployeeId();
 
-    connect(timer, &QTimer::timeout, this, &TrayManager::updateTimer);
+	connect(timer, &QTimer::timeout, this, &TrayManager::updateTimer);
 }
 
 //////////////////////////////////////////////////////////////
@@ -36,9 +37,11 @@ TrayManager::TrayManager(QObject* parent)
 void TrayManager::setupUI()
 {
     mainWindow = new QWidget();
+    mainWindow->setWindowIcon(QIcon(":/icons/clock.ico"));
     mainWindow->setWindowTitle("EMS Notify Status");
     mainWindow->resize(400, 250);
 
+    // Layout
     auto* layout = new QVBoxLayout(mainWindow);
     layout->setAlignment(Qt::AlignCenter);
 
@@ -65,8 +68,9 @@ void TrayManager::setupUI()
 
     mainWindow->setStyleSheet(R"(
         QWidget {
-            background-color: black;
-            color: white;
+            background-color: #2B2B2B;
+            color: #F0F0F0;
+            font-family: "Segoe UI";
         }
     )");
 }
@@ -77,44 +81,44 @@ void TrayManager::setupUI()
 
 void TrayManager::setupTray()
 {
-    trayIcon = new QSystemTrayIcon(QIcon(":/icons/clock.png"), this);
-    trayMenu = new QMenu();
+	trayIcon = new QSystemTrayIcon(QIcon(":/icons/clock.png"), this);
+	trayMenu = new QMenu();
 
-    auto* toggleAction = new QAction("Show / Hide", this);
-    connect(toggleAction, &QAction::triggered, this, &TrayManager::toggleWindow);
+	auto* toggleAction = new QAction("Show / Hide", this);
+	connect(toggleAction, &QAction::triggered, this, &TrayManager::toggleWindow);
 
-    auto* quitAction = new QAction("Quit", this);
-    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+	auto* quitAction = new QAction("Quit", this);
+	connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
 
-    trayMenu->addAction(toggleAction);
-    trayMenu->addSeparator();
-    trayMenu->addAction(quitAction);
+	trayMenu->addAction(toggleAction);
+	trayMenu->addSeparator();
+	trayMenu->addAction(quitAction);
 
-    trayIcon->setContextMenu(trayMenu);
-    trayIcon->setToolTip("EMS Notify: Initializing...");
-    trayIcon->show();
+	trayIcon->setContextMenu(trayMenu);
+	trayIcon->setToolTip("EMS Notify: Initializing...");
+	trayIcon->show();
 
-    connect(trayIcon, &QSystemTrayIcon::activated,
-            this, &TrayManager::onTrayIconActivated);
+	connect(trayIcon, &QSystemTrayIcon::activated,
+		this, &TrayManager::onTrayIconActivated);
 }
 
 void TrayManager::toggleWindow()
 {
-    if (mainWindow->isVisible())
-        mainWindow->hide();
-    else {
-        mainWindow->showNormal();
-        mainWindow->activateWindow();
-    }
+	if (mainWindow->isVisible())
+		mainWindow->hide();
+	else {
+		mainWindow->showNormal();
+		mainWindow->activateWindow();
+	}
 }
 
 void TrayManager::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 {
-    if (reason == QSystemTrayIcon::Trigger ||
-        reason == QSystemTrayIcon::DoubleClick)
-    {
-        toggleWindow();
-    }
+	if (reason == QSystemTrayIcon::Trigger ||
+		reason == QSystemTrayIcon::DoubleClick)
+	{
+		toggleWindow();
+	}
 }
 
 //////////////////////////////////////////////////////////////
@@ -123,37 +127,37 @@ void TrayManager::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 
 void TrayManager::checkEmployeeId()
 {
-    QSettings settings(QSettings::IniFormat,
-                       QSettings::UserScope,
-                       "CSG",
-                       "EmsNotify");
+	QSettings settings(QSettings::IniFormat,
+		QSettings::UserScope,
+		"CSG",
+		"EmsNotify");
 
-    QString employeeId = settings.value("employeeId").toString();
+	QString employeeId = settings.value("employeeId").toString();
 
-    if (employeeId.isEmpty()) {
-        bool ok = false;
+	if (employeeId.isEmpty()) {
+		bool ok = false;
 
-        employeeId = QInputDialog::getText(
-            nullptr,
-            "Employee ID",
-            "Enter Employee ID:",
-            QLineEdit::Normal,
-            "",
-            &ok
-        );
+		employeeId = QInputDialog::getText(
+			nullptr,
+			"Employee ID",
+			"Enter Employee ID:",
+			QLineEdit::Normal,
+			"",
+			&ok
+		);
 
-        if (!ok || employeeId.trimmed().isEmpty()) {
-            QMessageBox::critical(nullptr,
-                                  "Error",
-                                  "Employee ID required!");
-            qApp->quit();
-            return;
-        }
+		if (!ok || employeeId.trimmed().isEmpty()) {
+			QMessageBox::critical(nullptr,
+				"Error",
+				"Employee ID required!");
+			qApp->quit();
+			return;
+		}
 
-        settings.setValue("employeeId", employeeId);
-    }
+		settings.setValue("employeeId", employeeId);
+	}
 
-    callApi(employeeId);
+	callApi(employeeId);
 }
 
 //////////////////////////////////////////////////////////////
@@ -162,58 +166,58 @@ void TrayManager::checkEmployeeId()
 
 void TrayManager::callApi(const QString& employeeId)
 {
-    QUrl url("http://localhost:8000/time");
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader,
-                      "application/json");
+	QUrl url("http://localhost:8000/time");
+	QNetworkRequest request(url);
+	request.setHeader(QNetworkRequest::ContentTypeHeader,
+		"application/json");
 
-    QJsonObject payload;
-    payload["employeeId"] = employeeId;
+	QJsonObject payload;
+	payload["employeeId"] = employeeId;
 
-    QNetworkReply* reply =
-        networkManager->post(request,
-                             QJsonDocument(payload).toJson());
+	QNetworkReply* reply =
+		networkManager->post(request,
+			QJsonDocument(payload).toJson());
 
-    connect(reply, &QNetworkReply::finished, this, [=]() {
+	connect(reply, &QNetworkReply::finished, this, [=]() {
 
-        if (reply->error() != QNetworkReply::NoError) {
-            qDebug() << "API Error:" << reply->errorString();
-            trayIcon->showMessage("EMS Notify",
-                                  "Failed to fetch time.",
-                                  QSystemTrayIcon::Warning);
-            reply->deleteLater();
-            return;
-        }
+		if (reply->error() != QNetworkReply::NoError) {
+			qDebug() << "API Error:" << reply->errorString();
+			trayIcon->showMessage("EMS Notify",
+				"Failed to fetch time.",
+				QSystemTrayIcon::Warning);
+			reply->deleteLater();
+			return;
+		}
 
-        const QString timeString =
-            QString(reply->readAll()).trimmed();
+		const QString timeString =
+			QString(reply->readAll()).trimmed();
 
-        qDebug() << "API Response:" << timeString;
+		qDebug() << "API Response:" << timeString;
 
-        if (!parseTimeString(timeString)) {
-            qDebug() << "Invalid time format received";
-        }
+		if (!parseTimeString(timeString)) {
+			qDebug() << "Invalid time format received";
+		}
 
-        reply->deleteLater();
-    });
+		reply->deleteLater();
+		});
 }
 
 bool TrayManager::parseTimeString(const QString& timeString)
 {
-    const QStringList parts = timeString.split(":");
-    if (parts.size() != 3)
-        return false;
+	const QStringList parts = timeString.split(":");
+	if (parts.size() != 3)
+		return false;
 
-    int hours   = parts[0].toInt();
-    int minutes = parts[1].toInt();
-    int seconds = parts[2].toInt();
+	int hours = parts[0].toInt();
+	int minutes = parts[1].toInt();
+	int seconds = parts[2].toInt();
 
-    remainingSeconds = hours * 3600 +
-                       minutes * 60 +
-                       seconds;
+	remainingSeconds = hours * 3600 +
+		minutes * 60 +
+		seconds;
 
-    startTimer();
-    return true;
+	startTimer();
+	return true;
 }
 
 //////////////////////////////////////////////////////////////
@@ -222,46 +226,46 @@ bool TrayManager::parseTimeString(const QString& timeString)
 
 void TrayManager::startTimer()
 {
-    timer->stop();
-    timer->start(1000);
+	timer->stop();
+	timer->start(1000);
 }
 
 void TrayManager::updateTimer()
 {
-    if (remainingSeconds > 0)
-        --remainingSeconds;
+	if (remainingSeconds > 0)
+		--remainingSeconds;
 
-    int hrs  = remainingSeconds / 3600;
-    int mins = (remainingSeconds % 3600) / 60;
-    int secs = remainingSeconds % 60;
+	int hrs = remainingSeconds / 3600;
+	int mins = (remainingSeconds % 3600) / 60;
+	int secs = remainingSeconds % 60;
 
-    const QString formattedTime =
-        QString("%1:%2:%3")
-            .arg(hrs,  2, 10, QChar('0'))
-            .arg(mins, 2, 10, QChar('0'))
-            .arg(secs, 2, 10, QChar('0'));
+	const QString formattedTime =
+		QString("%1:%2:%3")
+		.arg(hrs, 2, 10, QChar('0'))
+		.arg(mins, 2, 10, QChar('0'))
+		.arg(secs, 2, 10, QChar('0'));
 
-    timeLabel->setText(formattedTime);
-    trayIcon->setToolTip("Remaining: " + formattedTime);
+	timeLabel->setText(formattedTime);
+	trayIcon->setToolTip("Remaining: " + formattedTime);
 
-    if (remainingSeconds <= 0) {
-        handleFinished();
-    }
+	if (remainingSeconds <= 0) {
+		handleFinished();
+	}
 }
 
 void TrayManager::handleFinished()
 {
-    timer->stop();
+	timer->stop();
 
-    timeLabel->setText("DONE");
+	timeLabel->setText("DONE");
 
-    statusLabel->setText("Status: Finished");
+	statusLabel->setText("Status: Finished");
 
-    trayIcon->setToolTip("EMS Notify: Done!");
-    trayIcon->showMessage(
-        "EMS Notify",
-        "You are done for the day.",
-        QSystemTrayIcon::Information,
-        8000
-    );
+	trayIcon->setToolTip("EMS Notify: Done!");
+	trayIcon->showMessage(
+		"EMS Notify",
+		"You are done for the day.",
+		QSystemTrayIcon::Information,
+		8000
+	);
 }
