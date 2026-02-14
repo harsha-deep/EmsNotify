@@ -2,9 +2,12 @@
 
 #include <QObject>
 #include <QSystemTrayIcon>
-#include <QMenu>
-#include <QNetworkAccessManager>
-#include <QTimer>
+
+class QMenu;
+class QNetworkAccessManager;
+class QTimer;
+class QWidget;
+class QLabel;
 
 class TrayManager : public QObject
 {
@@ -13,16 +16,43 @@ class TrayManager : public QObject
 public:
     explicit TrayManager(QObject* parent = nullptr);
 
+private slots:
+    void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
+    void updateTimer();
+
 private:
-    QSystemTrayIcon* trayIcon;
-    QMenu* trayMenu;
-    QNetworkAccessManager* networkManager;
-    QTimer* timer;
-
-    int totalSeconds = 0;
-
+    //////////////////////////////////////////////////////////
+    // Setup
+    //////////////////////////////////////////////////////////
+    void setupUI();
     void setupTray();
+
+    //////////////////////////////////////////////////////////
+    // Business Logic
+    //////////////////////////////////////////////////////////
     void checkEmployeeId();
     void callApi(const QString& employeeId);
+    bool parseTimeString(const QString& timeString);
+
+    //////////////////////////////////////////////////////////
+    // Timer
+    //////////////////////////////////////////////////////////
     void startTimer();
+    void handleFinished();
+    void toggleWindow();
+
+private:
+    //////////////////////////////////////////////////////////
+    // Members
+    //////////////////////////////////////////////////////////
+    QSystemTrayIcon*        trayIcon            = nullptr;
+    QMenu*                  trayMenu            = nullptr;
+    QNetworkAccessManager*  networkManager      = nullptr;
+    QTimer*                 timer               = nullptr;
+
+    QWidget*                mainWindow          = nullptr;
+    QLabel*                 timeLabel           = nullptr;
+    QLabel*                 statusLabel         = nullptr;
+
+    int                     remainingSeconds    = 0;
 };
