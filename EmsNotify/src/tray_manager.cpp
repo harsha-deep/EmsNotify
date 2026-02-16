@@ -16,6 +16,7 @@
 #include <QTimer>
 #include <QMenu>
 #include <QIcon>
+#include <QDateTime>
 
 TrayManager::TrayManager(QObject* parent)
 	: QObject(parent),
@@ -39,11 +40,19 @@ void TrayManager::setupUI()
     mainWindow = new QWidget();
     mainWindow->setWindowIcon(QIcon(":/icons/clock.ico"));
     mainWindow->setWindowTitle("EMS Notify Status");
-    mainWindow->resize(400, 250);
+    mainWindow->resize(400, 300);
 
     // Layout
     auto* layout = new QVBoxLayout(mainWindow);
     layout->setAlignment(Qt::AlignCenter);
+
+    // Check-in Label
+    checkInLabel = new QLabel("Check-in time: Loading...", mainWindow);
+    checkInLabel->setAlignment(Qt::AlignCenter);
+
+    QFont checkInFont;
+    checkInFont.setPointSize(11);
+    checkInLabel->setFont(checkInFont);
 
     // Time Label
     timeLabel = new QLabel("Initializing...", mainWindow);
@@ -62,6 +71,8 @@ void TrayManager::setupUI()
     statusFont.setPointSize(12);
     statusLabel->setFont(statusFont);
 
+    layout->addWidget(checkInLabel);
+    layout->addSpacing(10);
     layout->addWidget(timeLabel);
     layout->addSpacing(10);
     layout->addWidget(statusLabel);
@@ -157,17 +168,16 @@ void TrayManager::checkEmployeeId()
 		settings.setValue("employeeId", employeeId);
 	}
 
-	callApi(employeeId);
+	callCheckInTimeApi(employeeId);
 }
 
 //////////////////////////////////////////////////////////////
 // API Stuff
 //////////////////////////////////////////////////////////////
 
-void TrayManager::callApi(const QString& employeeId)
+void TrayManager::callCheckInTimeApi(const QString& employeeId)
 {
-	//QUrl url("http://localhost:8000/time");
-	QUrl url("https://smartcsg.karnataka.gov.in/ems/api/getElapsedTime");
+	QUrl url("https://smartcsg.karnataka.gov.in/ems/api/getCheckInTime");
 	QNetworkRequest request(url);
 	request.setHeader(QNetworkRequest::ContentTypeHeader,
 		"application/json");
@@ -184,7 +194,7 @@ void TrayManager::callApi(const QString& employeeId)
 		if (reply->error() != QNetworkReply::NoError) {
 			qDebug() << "API Error:" << reply->errorString();
 			trayIcon->showMessage("EMS Notify",
-				"Failed to fetch time.",
+				"Failed to fetch check-in time.",
 				QSystemTrayIcon::Warning);
 			reply->deleteLater();
 			return;
@@ -193,17 +203,17 @@ void TrayManager::callApi(const QString& employeeId)
 		const QString timeString =
 			QString(reply->readAll()).trimmed();
 
-		qDebug() << "API Response:" << timeString;
+		qDebug() << "Check-in Time Response:" << timeString;
 
-		if (!parseTimeString(timeString)) {
-			qDebug() << "Invalid time format received";
+		if (!parseCheckInTime(timeString)) {
+			qDebug() << "Invalid check-in time format received";
 		}
 
 		reply->deleteLater();
-		});
+	});
 }
 
-bool TrayManager::parseTimeString(const QString& timeString)
+bool TrayManager::parseCheckInTime(const QString& timeString)
 {
 	const QStringList parts = timeString.split(":");
 	if (parts.size() != 3)
@@ -213,10 +223,18 @@ bool TrayManager::parseTimeString(const QString& timeString)
 	int minutes = parts[1].toInt();
 	int seconds = parts[2].toInt();
 
-	remainingSeconds = hours * 3600 +
-		minutes * 60 +
-		seconds;
+	// Store check-in time string
+	checkInTimeStr = timeString;
 
+	// Create today's date with check-in time
+	QDate today = QDate::currentDate();
+	QTime checkInTime(hours, minutes, seconds);
+	checkInDateTime = QDateTime(today, checkInTime);
+
+	// Update UI
+	checkInLabel->setText("Check-in time: " + checkInTimeStr);
+
+	// Start live timer
 	startTimer();
 	return true;
 }
@@ -228,13 +246,31 @@ bool TrayManager::parseTimeString(const QString& timeString)
 void TrayManager::startTimer()
 {
 	timer->stop();
-	timer->start(1000);
+	calculateRemainingTime(); // Initial calculation
+	timer->start(1000); // Update every second
+}
+
+void TrayManager::calculateRemainingTime()
+{
+	// Get current time
+	QDateTime now = QDateTime::currentDateTime();
+
+	// Calculate completion time (check-in + 9 hours)
+	QDateTime completionTime = checkInDateTime.addSecs(9 * 3600);
+
+	// Calculate remaining seconds
+	remainingSeconds = now.secsTo(completionTime);
+
+	// If negative, set to 0
+	if (remainingSeconds < 0) {
+		remainingSeconds = 0;
+	}
 }
 
 void TrayManager::updateTimer()
 {
-	if (remainingSeconds > 0)
-		--remainingSeconds;
+	// Recalculate remaining time based on current time
+	calculateRemainingTime();
 
 	int hrs = remainingSeconds / 3600;
 	int mins = (remainingSeconds % 3600) / 60;
@@ -246,9 +282,13 @@ void TrayManager::updateTimer()
 		.arg(mins, 2, 10, QChar('0'))
 		.arg(secs, 2, 10, QChar('0'));
 
-	timeLabel->setText(formattedTime);
+	// Update UI
+	timeLabel->setText("Time remaining: " + formattedTime);
+	
+	// Update tooltip (live updates when hovering)
 	trayIcon->setToolTip("Remaining: " + formattedTime);
 
+	// Check if finished
 	if (remainingSeconds <= 0) {
 		handleFinished();
 	}
@@ -258,14 +298,14 @@ void TrayManager::handleFinished()
 {
 	timer->stop();
 
-	timeLabel->setText("DONE");
+	timeLabel->setText("Time remaining: 00:00:00");
 
-	statusLabel->setText("Status: Finished");
+	statusLabel->setText("Status: Complete");
 
-	trayIcon->setToolTip("EMS Notify: Done!");
+	trayIcon->setToolTip("EMS Notify: Complete!");
 	trayIcon->showMessage(
 		"EMS Notify",
-		"You are done for the day.",
+		"You have completed your 9 hours.",
 		QSystemTrayIcon::Information,
 		8000
 	);

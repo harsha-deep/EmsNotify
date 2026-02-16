@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QSystemTrayIcon>
+#include <QDateTime>
 
 class QMenu;
 class QNetworkAccessManager;
@@ -32,7 +33,10 @@ private:
     //////////////////////////////////////////////////////////
     void checkEmployeeId();
     void callApi(const QString& employeeId);
+    void callCheckInTimeApi(const QString& employeeId);
     bool parseTimeString(const QString& timeString);
+    bool parseCheckInTime(const QString& timeString);
+    void calculateRemainingTime();
 
     //////////////////////////////////////////////////////////
     // Timer
@@ -52,7 +56,11 @@ private:
 
     QWidget*                mainWindow          = nullptr;
     QLabel*                 timeLabel           = nullptr;
+    QLabel*                 checkInLabel        = nullptr;
     QLabel*                 statusLabel         = nullptr;
 
     int                     remainingSeconds    = 0;
+    QDateTime               checkInDateTime;
+    QString                 checkInTimeStr;
+    QString                 checkInTime; // New member variable
 };
