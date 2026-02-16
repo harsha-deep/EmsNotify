@@ -3,7 +3,7 @@ set -e
 
 APP=EmsNotify
 
-# 1️⃣ Build project
+# Build project
 rm -rf build
 mkdir -p build
 cd build
@@ -14,27 +14,27 @@ cmake .. -DCMAKE_BUILD_TYPE=Release \
 cmake --build . --config Release
 cd ..
 
-# 2️⃣ Prepare AppDir
+# Prepare AppDir
 rm -rf AppDir
 mkdir -p AppDir/usr/bin
 mkdir -p AppDir/usr/share/applications
 mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
 
-# 3️⃣ Copy compiled binary
+# Copy compiled binary
 cp build/$APP AppDir/usr/bin/
 
-# 4️⃣ Copy desktop file
+# Copy desktop file
 cp packaging/$APP.desktop AppDir/usr/share/applications/
 
-# 5️⃣ Copy icon
+# Copy icon
 cp resources/icons/$APP.png AppDir/usr/share/icons/hicolor/256x256/apps/
 
-# 6️⃣ Download linuxdeploy tools
+# Download linuxdeploy tools
 wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
 wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
 chmod +x linuxdeploy*.AppImage
 
-# 7️⃣ Build AppImage
+# Build AppImage
 ./linuxdeploy-x86_64.AppImage \
   --appdir AppDir \
   --executable AppDir/usr/bin/$APP \
@@ -43,4 +43,4 @@ chmod +x linuxdeploy*.AppImage
   --plugin qt \
   --output appimage
 
-echo "✅ AppImage created!"
+echo "AppImage created!"
