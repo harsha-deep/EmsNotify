@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(EmsNotify LANGUAGES CXX)
+project(EmsNotify VERSION 1.0.1 LANGUAGES CXX)
+
+set(GITHUB_OWNER "harsha-deep")
+set(GITHUB_REPO  "EmsNotify")
+
+configure_file(
+    include/config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/config.h
+    @ONLY
+)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,6 +30,7 @@ qt_add_executable(EmsNotify
 
 target_include_directories(EmsNotify PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_link_libraries(EmsNotify PRIVATE

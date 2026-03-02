@@ -5,9 +5,10 @@
 #include <QDateTime>
 
 class QMenu;
+class QMenuBar;
+class QMainWindow;
 class QNetworkAccessManager;
 class QTimer;
-class QWidget;
 class QLabel;
 
 class TrayManager : public QObject
@@ -27,6 +28,13 @@ private:
     //////////////////////////////////////////////////////////
     void setupUI();
     void setupTray();
+    void setupMenuBar();
+
+    //////////////////////////////////////////////////////////
+    // Dialogs
+    //////////////////////////////////////////////////////////
+    void openSettings();
+    void openAbout();
 
     //////////////////////////////////////////////////////////
     // Business Logic
@@ -54,7 +62,7 @@ private:
     QNetworkAccessManager*  networkManager      = nullptr;
     QTimer*                 timer               = nullptr;
 
-    QWidget*                mainWindow          = nullptr;
+    QMainWindow*            mainWindow          = nullptr;
     QLabel*                 timeLabel           = nullptr;
     QLabel*                 checkInLabel        = nullptr;
     QLabel*                 statusLabel         = nullptr;
