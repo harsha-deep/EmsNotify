@@ -19,7 +19,7 @@ qt_add_executable(EmsNotify WIN32
     resources/app.rc
 )
 
-target_include_directories(EmsNotify PRIVATE
+target_include_directories(EmsNotify PRIVATE WIN32
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
