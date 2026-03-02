@@ -10,13 +10,14 @@ class QMainWindow;
 class QNetworkAccessManager;
 class QTimer;
 class QLabel;
+class Updater;
 
 class TrayManager : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit TrayManager(QObject* parent = nullptr);
+    explicit TrayManager(QObject *parent = nullptr);
 
 private slots:
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -40,10 +41,8 @@ private:
     // Business Logic
     //////////////////////////////////////////////////////////
     void checkEmployeeId();
-    void callApi(const QString& employeeId);
-    void callCheckInTimeApi(const QString& employeeId);
-    bool parseTimeString(const QString& timeString);
-    bool parseCheckInTime(const QString& timeString);
+    void callCheckInTimeApi(const QString &employeeId);
+    bool parseCheckInTime(const QString &timeString);
     void calculateRemainingTime();
 
     //////////////////////////////////////////////////////////
@@ -57,18 +56,18 @@ private:
     //////////////////////////////////////////////////////////
     // Members
     //////////////////////////////////////////////////////////
-    QSystemTrayIcon*        trayIcon            = nullptr;
-    QMenu*                  trayMenu            = nullptr;
-    QNetworkAccessManager*  networkManager      = nullptr;
-    QTimer*                 timer               = nullptr;
+    QSystemTrayIcon *trayIcon = nullptr;
+    QMenu *trayMenu = nullptr;
+    QNetworkAccessManager *networkManager = nullptr;
+    QTimer *timer = nullptr;
+    Updater *updater = nullptr;
 
-    QMainWindow*            mainWindow          = nullptr;
-    QLabel*                 timeLabel           = nullptr;
-    QLabel*                 checkInLabel        = nullptr;
-    QLabel*                 statusLabel         = nullptr;
+    QMainWindow *mainWindow = nullptr;
+    QLabel *timeLabel = nullptr;
+    QLabel *checkInLabel = nullptr;
+    QLabel *statusLabel = nullptr;
 
-    int                     remainingSeconds    = 0;
-    QDateTime               checkInDateTime;
-    QString                 checkInTimeStr;
-    QString                 checkInTime; // New member variable
+    int remainingSeconds = 0;
+    QDateTime checkInDateTime;
+    QString checkInTimeStr;
 };

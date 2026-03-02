@@ -1,0 +1,6 @@
+#pragma once
+
+#define APP_VERSION "@PROJECT_VERSION@"
+#define GITHUB_OWNER "@GITHUB_OWNER@"
+#define GITHUB_REPO "@GITHUB_REPO@"
+#define UPDATE_CHECK_URL "https://api.github.com/repos/@GITHUB_OWNER@/@GITHUB_REPO@/releases/latest"
