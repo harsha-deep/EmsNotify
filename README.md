@@ -6,3 +6,9 @@ https://github.com/harsha-deep/EmsNotify/blob/bb826be5b754b6fab2749f6ec66130d52b
 ```
 For console debugging, remove WIN32 and compile.
 ```
+
+
+Settings Location:
+- Windows: ```C:\Users\<username>\AppData\Roaming\CSG\EmsNotify.ini```
+
+- Linux: ```~/.config/CSG/EmsNotify.ini```
