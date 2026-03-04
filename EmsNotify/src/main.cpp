@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     // Optional: Application metadata (recommended)
     QCoreApplication::setOrganizationName("CSG");
     QCoreApplication::setApplicationName("EmsNotify");
-    QCoreApplication::setApplicationVersion("1.0.3");
+    QCoreApplication::setApplicationVersion("1.0.4");
 
 #ifdef NDEBUG
     qDebug() << "Release build";

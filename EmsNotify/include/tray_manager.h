@@ -44,6 +44,7 @@ private:
     void checkEmployeeId();
     void callApi(const QString &employeeId);
     void callCheckInTimeApi(const QString &employeeId);
+    void callAttendanceApi(const QString &employeeId, const QString &modeId);
     bool parseTimeString(const QString &timeString);
     bool parseCheckInTime(const QString &timeString);
     void calculateRemainingTime();
@@ -67,7 +68,7 @@ private:
     QMainWindow *mainWindow = nullptr;
     QLabel *timeLabel = nullptr;
     QLabel *checkInLabel = nullptr;
-    QLabel *statusLabel = nullptr;
+    QLabel *weekLabel = nullptr;
 
     int remainingSeconds = 0;
     QDateTime checkInDateTime;

@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QUrl>
 #include <QMessageBox>
 #include <QVBoxLayout>
@@ -78,19 +79,19 @@ void TrayManager::setupUI()
     timeFont.setBold(true);
     timeLabel->setFont(timeFont);
 
-    // Status Label
-    statusLabel = new QLabel("Status: Working", mainWindow);
-    statusLabel->setAlignment(Qt::AlignCenter);
+    // Flexi Hours Label
+    weekLabel = new QLabel("Flexi: Loading...", mainWindow);
+    weekLabel->setAlignment(Qt::AlignCenter);
 
-    QFont statusFont;
-    statusFont.setPointSize(12);
-    statusLabel->setFont(statusFont);
+    QFont weekFont;
+    weekFont.setPointSize(11);
+    weekLabel->setFont(weekFont);
 
     layout->addWidget(checkInLabel);
     layout->addSpacing(10);
     layout->addWidget(timeLabel);
     layout->addSpacing(10);
-    layout->addWidget(statusLabel);
+    layout->addWidget(weekLabel);
 
     mainWindow->setStyleSheet(R"(
         QWidget {
@@ -197,7 +198,10 @@ void TrayManager::openSettings()
     form->setSpacing(10);
 
     auto *employeeIdEdit = new QLineEdit(settings.value("employeeId").toString(), &dialog);
+    employeeIdEdit->setToolTip("Log in to EMS, go to Local Storage, and paste the 'employeeId' value.");
+
     auto *modeIdEdit = new QLineEdit(settings.value("modeId").toString(), &dialog);
+    modeIdEdit->setToolTip("Log in to EMS, go to Local Storage, and paste the 'selectionOfMode' value.");
 
     form->addRow("Employee ID:", employeeIdEdit);
     form->addRow("Mode ID:", modeIdEdit);
@@ -309,32 +313,62 @@ void TrayManager::checkEmployeeId()
                        "EmsNotify");
 
     QString employeeId = settings.value("employeeId").toString();
+    QString modeId = settings.value("modeId").toString();
 
-    if (employeeId.isEmpty())
+    if (employeeId.isEmpty() || modeId.isEmpty())
     {
-        bool ok = false;
+        QDialog dlg;
+        dlg.setWindowTitle("Setup");
+        dlg.setWindowIcon(QIcon(":/icons/clock.ico"));
+        dlg.setMinimumWidth(300);
+        dlg.setStyleSheet(R"(
+            QWidget   { background-color: #2B2B2B; color: #F0F0F0; font-family: "Segoe UI"; }
+            QLineEdit { background-color: #3C3C3C; color: #F0F0F0; border: 1px solid #555;
+                        border-radius: 3px; padding: 4px; }
+            QPushButton { background-color: #3C3C3C; color: #F0F0F0; border: 1px solid #555;
+                          border-radius: 3px; padding: 5px 14px; }
+            QPushButton:hover { background-color: #505050; }
+        )");
 
-        employeeId = QInputDialog::getText(
-            nullptr,
-            "Employee ID",
-            "Enter Employee ID:",
-            QLineEdit::Normal,
-            "",
-            &ok);
+        auto *form = new QFormLayout(&dlg);
+        form->setContentsMargins(16, 16, 16, 16);
+        form->setSpacing(10);
 
-        if (!ok || employeeId.trimmed().isEmpty())
+        auto *idEdit = new QLineEdit(employeeId, &dlg);
+        idEdit->setToolTip("Log in to EMS, go to Local Storage, and paste the 'employeeId' value.");
+
+        auto *modeEdit = new QLineEdit(modeId, &dlg);
+        modeEdit->setToolTip("Log in to EMS, go to Local Storage, and paste the 'selectionOfMode' value.");
+
+        form->addRow("Employee ID:", idEdit);
+        form->addRow("Mode ID:", modeEdit);
+
+        auto *buttons = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+        form->addRow(buttons);
+
+        connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+        if (dlg.exec() != QDialog::Accepted ||
+            idEdit->text().trimmed().isEmpty() ||
+            modeEdit->text().trimmed().isEmpty())
         {
             QMessageBox::critical(nullptr,
                                   "Error",
-                                  "Employee ID required!");
+                                  "Employee ID and Mode ID are required!");
             qApp->quit();
             return;
         }
 
+        employeeId = idEdit->text().trimmed();
+        modeId = modeEdit->text().trimmed();
         settings.setValue("employeeId", employeeId);
+        settings.setValue("modeId", modeId);
     }
 
     callCheckInTimeApi(employeeId);
+    callAttendanceApi(employeeId, modeId);
 }
 
 //////////////////////////////////////////////////////////////
@@ -375,6 +409,78 @@ void TrayManager::callCheckInTimeApi(const QString &employeeId)
 		if (!parseCheckInTime(timeString)) {
 			qDebug() << "Invalid check-in time format received";
 		}
+
+		reply->deleteLater(); });
+}
+
+void TrayManager::callAttendanceApi(const QString &employeeId, const QString &modeId)
+{
+	QUrl url("https://smartcsg.karnataka.gov.in/ems/api/getAttendance");
+	QNetworkRequest request(url);
+	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+	QJsonObject payload;
+	payload["employeeId"] = employeeId;
+	payload["mode"] = modeId;
+
+	QNetworkReply *reply =
+		networkManager->post(request, QJsonDocument(payload).toJson());
+
+	connect(reply, &QNetworkReply::finished, this, [=]()
+			{
+		if (reply->error() != QNetworkReply::NoError) {
+			qDebug() << "Attendance API Error:" << reply->errorString();
+			weekLabel->setText("Flexi: N/A");
+			reply->deleteLater();
+			return;
+		}
+
+		const QByteArray data = reply->readAll();
+		qDebug() << "Attendance Response:" << data;
+
+		const QJsonDocument doc = QJsonDocument::fromJson(data);
+		if (!doc.isArray()) {
+			weekLabel->setText("Flexi: N/A");
+			reply->deleteLater();
+			return;
+		}
+
+		int workedSeconds = 0;
+		int workingDayCount = 0;
+
+		for (const QJsonValue &val : doc.array()) {
+			const QJsonObject rec = val.toObject();
+
+			// Skip weekends and public holidays
+			if (rec["attendanceStatus"].toString() == "W")
+				continue;
+
+			const QString totalHours = rec["totalHours"].toString();
+			if (totalHours.isEmpty())
+				continue;
+
+			const QStringList parts = totalHours.split(":");
+			if (parts.size() == 3) {
+				workedSeconds += parts[0].toInt() * 3600
+							   + parts[1].toInt() * 60
+							   + parts[2].toInt();
+				++workingDayCount;
+			}
+		}
+
+		const int targetSeconds = workingDayCount * 9 * 3600;
+		const int flexi = workedSeconds - targetSeconds;
+		const int absFlexi = flexi >= 0 ? flexi : -flexi;
+
+		const QString formatted =
+			QString("%1%2:%3:%4")
+				.arg(flexi >= 0 ? "+" : "-")
+				.arg(absFlexi / 3600, 2, 10, QChar('0'))
+				.arg((absFlexi % 3600) / 60, 2, 10, QChar('0'))
+				.arg(absFlexi % 60, 2, 10, QChar('0'));
+
+		weekLabel->setText("Flexi: " + formatted);
+		weekLabel->setStyleSheet(flexi >= 0 ? "color: #4CAF50;" : "color: #F44336;");
 
 		reply->deleteLater(); });
 }
@@ -467,8 +573,6 @@ void TrayManager::handleFinished()
     timer->stop();
 
     timeLabel->setText("Time remaining: 00:00:00");
-
-    statusLabel->setText("Status: Complete");
 
     trayIcon->setToolTip("EMS Notify: Complete!");
     trayIcon->showMessage(
