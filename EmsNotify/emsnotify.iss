@@ -1,6 +1,6 @@
 [Setup]
 AppId={{E1A4F1C3-8B3D-4C8A-9F12-EMSNOTIFY001}}
-#define MyAppVersion "1.0.3"
+#define MyAppVersion "1.0.4"
 AppName=EMS Notify
 AppVersion={#MyAppVersion}
 AppPublisher=Harsha
