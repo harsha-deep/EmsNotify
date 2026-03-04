@@ -9,6 +9,6 @@ For console debugging, remove WIN32 and compile.
 
 
 Settings Location:
-- Windows: ```C:\Users\<username>\AppData\Roaming\CSG\EmsNotify.ini```
+- Windows: ```%APPDATA%\CSG\EmsNotify.ini```
 
 - Linux: ```~/.config/CSG/EmsNotify.ini```
