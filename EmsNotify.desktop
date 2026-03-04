@@ -1,11 +1,8 @@
-mkdir -p packaging
-cat > packaging/EmsNotify.desktop << EOF
 [Desktop Entry]
 Type=Application
 Name=EMS Notify
 Exec=EmsNotify
 Icon=EmsNotify
-Comment=EMS Notify Application
+Comment=EMS check-in countdown tray application
 Categories=Utility;
 Terminal=false
-EOF

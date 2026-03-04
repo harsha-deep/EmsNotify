@@ -1,0 +1,76 @@
+cmake_minimum_required(VERSION 3.16)
+
+project(EmsNotify VERSION 1.0.4 LANGUAGES CXX)
+
+set(GITHUB_OWNER "harsha-deep")
+set(GITHUB_REPO  "EmsNotify")
+
+configure_file(
+    include/config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/config.h
+    @ONLY
+)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+
+qt_add_executable(EmsNotify
+    src/main.cpp
+    src/tray_manager.cpp
+    src/auto_updater.cpp
+    include/tray_manager.h
+    include/auto_updater.h
+    resources/app.qrc
+)
+
+target_include_directories(EmsNotify PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+target_link_libraries(EmsNotify PRIVATE
+    Qt6::Core
+    Qt6::Widgets
+    Qt6::Network
+)
+
+# ── Install rules ────────────────────────────────────────────────────────────
+install(TARGETS EmsNotify
+    RUNTIME DESTINATION bin
+)
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../EmsNotify.desktop
+    DESTINATION share/applications
+)
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../resources/icons/clock.png
+    DESTINATION share/icons/hicolor/256x256/apps
+)
+
+# ── CPack (DEB + RPM) ────────────────────────────────────────────────────────
+set(CPACK_PACKAGE_NAME              "emsnotify")
+set(CPACK_PACKAGE_VERSION           "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_CONTACT           "harsha-deep")
+set(CPACK_PACKAGE_DESCRIPTION_SHORT "EMS Notify – attendance countdown tray app")
+set(CPACK_PACKAGE_DESCRIPTION       "A Qt system-tray app that shows your EMS check-in time and remaining work hours.")
+set(CPACK_PACKAGE_HOMEPAGE_URL      "https://github.com/harsha-deep/EmsNotify")
+
+# DEB-specific
+set(CPACK_DEBIAN_PACKAGE_SECTION    "utils")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS    "libqt6widgets6, libqt6network6")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "harsha-deep")
+
+# RPM-specific
+set(CPACK_RPM_PACKAGE_LICENSE       "MIT")
+set(CPACK_RPM_PACKAGE_GROUP         "Applications/Utilities")
+set(CPACK_RPM_PACKAGE_REQUIRES      "qt6-qtbase >= 6.2, qt6-qtbase-gui >= 6.2")
+
+set(CPACK_GENERATOR "DEB;RPM")
+
+include(CPack)
