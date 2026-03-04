@@ -4,6 +4,8 @@ project(EmsNotify LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(GITHUB_OWNER "harsha-deep")
+set(GITHUB_REPO  "EmsNotify")
 
 set(CMAKE_AUTORCC ON)
 
