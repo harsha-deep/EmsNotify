@@ -26,18 +26,21 @@
 #include <QMainWindow>
 #include <QIcon>
 #include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
 
-TrayManager::TrayManager(QObject* parent)
-	: QObject(parent),
-	networkManager(new QNetworkAccessManager(this)),
-	timer(new QTimer(this)),
-	remainingSeconds(0)
+TrayManager::TrayManager(QObject *parent)
+    : QObject(parent),
+      networkManager(new QNetworkAccessManager(this)),
+      timer(new QTimer(this)),
+      remainingSeconds(0)
 {
-	setupUI();
-	setupTray();
-	checkEmployeeId();
+    setupUI();
+    setupTray();
+    checkEmployeeId();
 
-	connect(timer, &QTimer::timeout, this, &TrayManager::updateTimer);
+    connect(timer, &QTimer::timeout, this, &TrayManager::updateTimer);
 }
 
 //////////////////////////////////////////////////////////////
@@ -51,11 +54,11 @@ void TrayManager::setupUI()
     mainWindow->setWindowTitle("EMS Notify Status");
     mainWindow->resize(400, 300);
 
-    auto* centralWidget = new QWidget();
+    auto *centralWidget = new QWidget();
     mainWindow->setCentralWidget(centralWidget);
 
     // Layout
-    auto* layout = new QVBoxLayout(centralWidget);
+    auto *layout = new QVBoxLayout(centralWidget);
     layout->setAlignment(Qt::AlignCenter);
 
     // Check-in Label
@@ -121,25 +124,25 @@ void TrayManager::setupUI()
 
 void TrayManager::setupTray()
 {
-	trayIcon = new QSystemTrayIcon(QIcon(":/icons/clock.png"), this);
-	trayMenu = new QMenu();
+    trayIcon = new QSystemTrayIcon(QIcon(":/icons/clock.png"), this);
+    trayMenu = new QMenu();
 
-	auto* toggleAction = new QAction("Show / Hide", this);
-	connect(toggleAction, &QAction::triggered, this, &TrayManager::toggleWindow);
+    auto *toggleAction = new QAction("Show / Hide", this);
+    connect(toggleAction, &QAction::triggered, this, &TrayManager::toggleWindow);
 
-	auto* quitAction = new QAction("Quit", this);
-	connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
+    auto *quitAction = new QAction("Quit", this);
+    connect(quitAction, &QAction::triggered, qApp, &QApplication::quit);
 
-	trayMenu->addAction(toggleAction);
-	trayMenu->addSeparator();
-	trayMenu->addAction(quitAction);
+    trayMenu->addAction(toggleAction);
+    trayMenu->addSeparator();
+    trayMenu->addAction(quitAction);
 
-	trayIcon->setContextMenu(trayMenu);
-	trayIcon->setToolTip("EMS Notify: Initializing...");
-	trayIcon->show();
+    trayIcon->setContextMenu(trayMenu);
+    trayIcon->setToolTip("EMS Notify: Initializing...");
+    trayIcon->show();
 
-	connect(trayIcon, &QSystemTrayIcon::activated,
-		this, &TrayManager::onTrayIconActivated);
+    connect(trayIcon, &QSystemTrayIcon::activated,
+            this, &TrayManager::onTrayIconActivated);
 }
 
 //////////////////////////////////////////////////////////////
@@ -148,17 +151,25 @@ void TrayManager::setupTray()
 
 void TrayManager::setupMenuBar()
 {
-    QMenuBar* menuBar = mainWindow->menuBar();
+    QMenuBar *menuBar = mainWindow->menuBar();
 
     // Edit menu
-    auto* editMenu = menuBar->addMenu("&Edit");
-    auto* settingsAction = new QAction("&Settings", this);
+    auto *editMenu = menuBar->addMenu("&Edit");
+    auto *settingsAction = new QAction("&Settings", this);
     connect(settingsAction, &QAction::triggered, this, &TrayManager::openSettings);
     editMenu->addAction(settingsAction);
 
+    editMenu->addSeparator();
+
+    auto *startupAction = new QAction("&Run at Startup", this);
+    startupAction->setCheckable(true);
+    startupAction->setChecked(isStartupEnabled());
+    connect(startupAction, &QAction::triggered, this, &TrayManager::toggleStartup);
+    editMenu->addAction(startupAction);
+
     // About menu
-    auto* aboutMenu = menuBar->addMenu("&About");
-    auto* aboutAction = new QAction("&About EMS Notify", this);
+    auto *aboutMenu = menuBar->addMenu("&About");
+    auto *aboutAction = new QAction("&About EMS Notify", this);
     connect(aboutAction, &QAction::triggered, this, &TrayManager::openAbout);
     aboutMenu->addAction(aboutAction);
 }
@@ -166,7 +177,7 @@ void TrayManager::setupMenuBar()
 void TrayManager::openSettings()
 {
     QSettings settings(QSettings::IniFormat,
-        QSettings::UserScope, "CSG", "EmsNotify");
+                       QSettings::UserScope, "CSG", "EmsNotify");
 
     QDialog dialog(mainWindow);
     dialog.setWindowTitle("Settings");
@@ -181,26 +192,27 @@ void TrayManager::openSettings()
         QPushButton:hover { background-color: #505050; }
     )");
 
-    auto* form = new QFormLayout(&dialog);
+    auto *form = new QFormLayout(&dialog);
     form->setContentsMargins(16, 16, 16, 16);
     form->setSpacing(10);
 
-    auto* employeeIdEdit = new QLineEdit(settings.value("employeeId").toString(), &dialog);
-    auto* modeIdEdit     = new QLineEdit(settings.value("modeId").toString(),     &dialog);
+    auto *employeeIdEdit = new QLineEdit(settings.value("employeeId").toString(), &dialog);
+    auto *modeIdEdit = new QLineEdit(settings.value("modeId").toString(), &dialog);
 
     form->addRow("Employee ID:", employeeIdEdit);
-    form->addRow("Mode ID:",     modeIdEdit);
+    form->addRow("Mode ID:", modeIdEdit);
 
-    auto* buttons = new QDialogButtonBox(
+    auto *buttons = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     form->addRow(buttons);
 
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-    if (dialog.exec() == QDialog::Accepted) {
+    if (dialog.exec() == QDialog::Accepted)
+    {
         settings.setValue("employeeId", employeeIdEdit->text().trimmed());
-        settings.setValue("modeId",     modeIdEdit->text().trimmed());
+        settings.setValue("modeId", modeIdEdit->text().trimmed());
     }
 }
 
@@ -219,25 +231,25 @@ void TrayManager::openAbout()
         QPushButton:hover { background-color: #505050; }
     )");
 
-    auto* layout = new QVBoxLayout(&dialog);
+    auto *layout = new QVBoxLayout(&dialog);
     layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(8);
 
-    auto* titleLabel = new QLabel("EMS Notify", &dialog);
+    auto *titleLabel = new QLabel("EMS Notify", &dialog);
     QFont titleFont;
     titleFont.setPointSize(16);
     titleFont.setBold(true);
     titleLabel->setFont(titleFont);
     titleLabel->setAlignment(Qt::AlignCenter);
 
-    auto* versionLabel = new QLabel(
+    auto *versionLabel = new QLabel(
         "Version " + QCoreApplication::applicationVersion(), &dialog);
     versionLabel->setAlignment(Qt::AlignCenter);
 
-    auto* builtWithLabel = new QLabel("Built with C++ and Qt", &dialog);
+    auto *builtWithLabel = new QLabel("Built with C++ and Qt", &dialog);
     builtWithLabel->setAlignment(Qt::AlignCenter);
 
-    auto* repoLabel = new QLabel(
+    auto *repoLabel = new QLabel(
         "<a href=\"https://github.com/harsha-deep/EmsNotify\" "
         "style=\"color:#6EA8FE;\">github.com/harsha-deep/EmsNotify</a>",
         &dialog);
@@ -245,13 +257,12 @@ void TrayManager::openAbout()
     repoLabel->setOpenExternalLinks(true);
     repoLabel->setTextFormat(Qt::RichText);
 
-    auto* checkUpdatesBtn = new QPushButton("Check for Updates", &dialog);
-    connect(checkUpdatesBtn, &QPushButton::clicked, [&]() {
-        QDesktopServices::openUrl(
-            QUrl("https://github.com/harsha-deep/EmsNotify/releases"));
-    });
+    auto *checkUpdatesBtn = new QPushButton("Check for Updates", &dialog);
+    connect(checkUpdatesBtn, &QPushButton::clicked, [&]()
+            { QDesktopServices::openUrl(
+                  QUrl("https://github.com/harsha-deep/EmsNotify/releases")); });
 
-    auto* closeBtn = new QPushButton("Close", &dialog);
+    auto *closeBtn = new QPushButton("Close", &dialog);
     connect(closeBtn, &QPushButton::clicked, &dialog, &QDialog::accept);
 
     layout->addWidget(titleLabel);
@@ -268,21 +279,22 @@ void TrayManager::openAbout()
 
 void TrayManager::toggleWindow()
 {
-	if (mainWindow->isVisible())
-		mainWindow->hide();
-	else {
-		mainWindow->showNormal();
-		mainWindow->activateWindow();
-	}
+    if (mainWindow->isVisible())
+        mainWindow->hide();
+    else
+    {
+        mainWindow->showNormal();
+        mainWindow->activateWindow();
+    }
 }
 
 void TrayManager::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 {
-	if (reason == QSystemTrayIcon::Trigger ||
-		reason == QSystemTrayIcon::DoubleClick)
-	{
-		toggleWindow();
-	}
+    if (reason == QSystemTrayIcon::Trigger ||
+        reason == QSystemTrayIcon::DoubleClick)
+    {
+        toggleWindow();
+    }
 }
 
 //////////////////////////////////////////////////////////////
@@ -291,58 +303,60 @@ void TrayManager::onTrayIconActivated(QSystemTrayIcon::ActivationReason reason)
 
 void TrayManager::checkEmployeeId()
 {
-	QSettings settings(QSettings::IniFormat,
-		QSettings::UserScope,
-		"CSG",
-		"EmsNotify");
+    QSettings settings(QSettings::IniFormat,
+                       QSettings::UserScope,
+                       "CSG",
+                       "EmsNotify");
 
-	QString employeeId = settings.value("employeeId").toString();
+    QString employeeId = settings.value("employeeId").toString();
 
-	if (employeeId.isEmpty()) {
-		bool ok = false;
+    if (employeeId.isEmpty())
+    {
+        bool ok = false;
 
-		employeeId = QInputDialog::getText(
-			nullptr,
-			"Employee ID",
-			"Enter Employee ID:",
-			QLineEdit::Normal,
-			"",
-			&ok
-		);
+        employeeId = QInputDialog::getText(
+            nullptr,
+            "Employee ID",
+            "Enter Employee ID:",
+            QLineEdit::Normal,
+            "",
+            &ok);
 
-		if (!ok || employeeId.trimmed().isEmpty()) {
-			QMessageBox::critical(nullptr,
-				"Error",
-				"Employee ID required!");
-			qApp->quit();
-			return;
-		}
+        if (!ok || employeeId.trimmed().isEmpty())
+        {
+            QMessageBox::critical(nullptr,
+                                  "Error",
+                                  "Employee ID required!");
+            qApp->quit();
+            return;
+        }
 
-		settings.setValue("employeeId", employeeId);
-	}
+        settings.setValue("employeeId", employeeId);
+    }
 
-	callCheckInTimeApi(employeeId);
+    callCheckInTimeApi(employeeId);
 }
 
 //////////////////////////////////////////////////////////////
 // API Stuff
 //////////////////////////////////////////////////////////////
 
-void TrayManager::callCheckInTimeApi(const QString& employeeId)
+void TrayManager::callCheckInTimeApi(const QString &employeeId)
 {
-	QUrl url("https://smartcsg.karnataka.gov.in/ems/api/getCheckInTime");
-	QNetworkRequest request(url);
-	request.setHeader(QNetworkRequest::ContentTypeHeader,
-		"application/json");
+    QUrl url("https://smartcsg.karnataka.gov.in/ems/api/getCheckInTime");
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader,
+                      "application/json");
 
-	QJsonObject payload;
-	payload["employeeId"] = employeeId;
+    QJsonObject payload;
+    payload["employeeId"] = employeeId;
 
-	QNetworkReply* reply =
-		networkManager->post(request,
-			QJsonDocument(payload).toJson());
+    QNetworkReply *reply =
+        networkManager->post(request,
+                             QJsonDocument(payload).toJson());
 
-	connect(reply, &QNetworkReply::finished, this, [=]() {
+    connect(reply, &QNetworkReply::finished, this, [=]()
+            {
 
 		if (reply->error() != QNetworkReply::NoError) {
 			qDebug() << "API Error:" << reply->errorString();
@@ -362,34 +376,33 @@ void TrayManager::callCheckInTimeApi(const QString& employeeId)
 			qDebug() << "Invalid check-in time format received";
 		}
 
-		reply->deleteLater();
-	});
+		reply->deleteLater(); });
 }
 
-bool TrayManager::parseCheckInTime(const QString& timeString)
+bool TrayManager::parseCheckInTime(const QString &timeString)
 {
-	const QStringList parts = timeString.split(":");
-	if (parts.size() != 3)
-		return false;
+    const QStringList parts = timeString.split(":");
+    if (parts.size() != 3)
+        return false;
 
-	int hours = parts[0].toInt();
-	int minutes = parts[1].toInt();
-	int seconds = parts[2].toInt();
+    int hours = parts[0].toInt();
+    int minutes = parts[1].toInt();
+    int seconds = parts[2].toInt();
 
-	// Store check-in time string
-	checkInTimeStr = timeString;
+    // Store check-in time string
+    checkInTimeStr = timeString;
 
-	// Create today's date with check-in time
-	QDate today = QDate::currentDate();
-	QTime checkInTime(hours, minutes, seconds);
-	checkInDateTime = QDateTime(today, checkInTime);
+    // Create today's date with check-in time
+    QDate today = QDate::currentDate();
+    QTime checkInTime(hours, minutes, seconds);
+    checkInDateTime = QDateTime(today, checkInTime);
 
-	// Update UI
-	checkInLabel->setText("Check-in time: " + checkInTimeStr);
+    // Update UI
+    checkInLabel->setText("Check-in time: " + checkInTimeStr);
 
-	// Start live timer
-	startTimer();
-	return true;
+    // Start live timer
+    startTimer();
+    return true;
 }
 
 //////////////////////////////////////////////////////////////
@@ -398,68 +411,117 @@ bool TrayManager::parseCheckInTime(const QString& timeString)
 
 void TrayManager::startTimer()
 {
-	timer->stop();
-	calculateRemainingTime(); // Initial calculation
-	timer->start(1000); // Update every second
+    timer->stop();
+    calculateRemainingTime(); // Initial calculation
+    timer->start(1000);       // Update every second
 }
 
 void TrayManager::calculateRemainingTime()
 {
-	// Get current time
-	QDateTime now = QDateTime::currentDateTime();
+    // Get current time
+    QDateTime now = QDateTime::currentDateTime();
 
-	// Calculate completion time (check-in + 9 hours)
-	QDateTime completionTime = checkInDateTime.addSecs(9 * 3600);
+    // Calculate completion time (check-in + 9 hours)
+    QDateTime completionTime = checkInDateTime.addSecs(9 * 3600);
 
-	// Calculate remaining seconds
-	remainingSeconds = now.secsTo(completionTime);
+    // Calculate remaining seconds
+    remainingSeconds = now.secsTo(completionTime);
 
-	// If negative, set to 0
-	if (remainingSeconds < 0) {
-		remainingSeconds = 0;
-	}
+    // If negative, set to 0
+    if (remainingSeconds < 0)
+    {
+        remainingSeconds = 0;
+    }
 }
 
 void TrayManager::updateTimer()
 {
-	// Recalculate remaining time based on current time
-	calculateRemainingTime();
+    // Recalculate remaining time based on current time
+    calculateRemainingTime();
 
-	int hrs = remainingSeconds / 3600;
-	int mins = (remainingSeconds % 3600) / 60;
-	int secs = remainingSeconds % 60;
+    int hrs = remainingSeconds / 3600;
+    int mins = (remainingSeconds % 3600) / 60;
+    int secs = remainingSeconds % 60;
 
-	const QString formattedTime =
-		QString("%1:%2:%3")
-		.arg(hrs, 2, 10, QChar('0'))
-		.arg(mins, 2, 10, QChar('0'))
-		.arg(secs, 2, 10, QChar('0'));
+    const QString formattedTime =
+        QString("%1:%2:%3")
+            .arg(hrs, 2, 10, QChar('0'))
+            .arg(mins, 2, 10, QChar('0'))
+            .arg(secs, 2, 10, QChar('0'));
 
-	// Update UI
-	timeLabel->setText("Time remaining: " + formattedTime);
-	
-	// Update tooltip (live updates when hovering)
-	trayIcon->setToolTip("Remaining: " + formattedTime);
+    // Update UI
+    timeLabel->setText("Time remaining: " + formattedTime);
 
-	// Check if finished
-	if (remainingSeconds <= 0) {
-		handleFinished();
-	}
+    // Update tooltip (live updates when hovering)
+    trayIcon->setToolTip("Remaining: " + formattedTime);
+
+    // Check if finished
+    if (remainingSeconds <= 0)
+    {
+        handleFinished();
+    }
 }
 
 void TrayManager::handleFinished()
 {
-	timer->stop();
+    timer->stop();
 
-	timeLabel->setText("Time remaining: 00:00:00");
+    timeLabel->setText("Time remaining: 00:00:00");
 
-	statusLabel->setText("Status: Complete");
+    statusLabel->setText("Status: Complete");
 
-	trayIcon->setToolTip("EMS Notify: Complete!");
-	trayIcon->showMessage(
-		"EMS Notify",
-		"You have completed your 9 hours.",
-		QSystemTrayIcon::Information,
-		8000
-	);
+    trayIcon->setToolTip("EMS Notify: Complete!");
+    trayIcon->showMessage(
+        "EMS Notify",
+        "You have completed your 9 hours.",
+        QSystemTrayIcon::Information,
+        8000);
+}
+
+//////////////////////////////////////////////////////////////
+// TIMER
+//////////////////////////////////////////////////////////////
+
+bool TrayManager::isStartupEnabled() const
+{
+#ifdef Q_OS_WIN
+    QSettings reg("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                  QSettings::NativeFormat);
+    return reg.contains("EmsNotify");
+#else
+    QString autostartFile = QDir::homePath() + "/.config/autostart/emsnotify.desktop";
+    return QFile::exists(autostartFile);
+#endif
+}
+
+void TrayManager::toggleStartup()
+{
+#ifdef Q_OS_WIN
+    QSettings reg("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                  QSettings::NativeFormat);
+    if (isStartupEnabled())
+        reg.remove("EmsNotify");
+    else
+        reg.setValue("EmsNotify", QCoreApplication::applicationFilePath().replace('/', '\\'));
+#else
+    QString autostartDir  = QDir::homePath() + "/.config/autostart";
+    QString autostartFile = autostartDir + "/emsnotify.desktop";
+
+    if (isStartupEnabled()) {
+        QFile::remove(autostartFile);
+    } else {
+        QDir().mkpath(autostartDir);
+        QFile f(autostartFile);
+        if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream s(&f);
+            s << "[Desktop Entry]\n"
+              << "Type=Application\n"
+              << "Name=EMS Notify\n"
+              << "Exec=" << QCoreApplication::applicationFilePath() << "\n"
+              << "Icon=emsnotify\n"
+              << "Terminal=false\n"
+              << "X-GNOME-Autostart-enabled=true\n";
+        }
+    }
+#endif
 }
