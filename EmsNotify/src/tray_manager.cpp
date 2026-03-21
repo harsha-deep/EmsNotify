@@ -448,11 +448,18 @@ void TrayManager::callAttendanceApi(const QString &employeeId, const QString &mo
 		int workedSeconds = 0;
 		int workingDayCount = 0;
 
+		const QDate today = QDate::currentDate();
+		const QDate weekStart = today.addDays(-(today.dayOfWeek() - 1)); // Monday
+
 		for (const QJsonValue &val : doc.array()) {
 			const QJsonObject rec = val.toObject();
 
 			// Skip weekends and public holidays
-			if (rec["attendanceStatus"].toString() == "W")
+			if (rec["attendanceStatus"].toString() == "W" || rec["attendanceStatus"].toString() == "W")
+				continue;
+
+			const QDate recDate = QDate::fromString(rec["attendanceDate"].toString(), "yyyy-MM-dd");
+			if (!recDate.isValid() || recDate < weekStart || recDate > today)
 				continue;
 
 			const QString totalHours = rec["totalHours"].toString();
